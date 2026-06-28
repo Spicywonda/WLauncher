@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AssemblyName>WLauncher.Core</AssemblyName>
+		<RootNamespace>WLauncher.Core</RootNamespace>
+		<PublishSingleFile>false</PublishSingleFile>
+	</PropertyGroup>
+</Project>

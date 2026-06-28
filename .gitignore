@@ -1,0 +1,24 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa]rm/
+[Aa]rm64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio files
+.vs/
+
+# Custom ignores for WLauncher build outputs
+publish/
+publish-single/
+publish-extract/
+WLauncher.zip
+.dotnet/
