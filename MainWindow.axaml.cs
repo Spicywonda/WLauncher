@@ -4348,6 +4348,10 @@ namespace WLauncher
                         {
                             category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/starfox64.png" };
                         }
+                        else if (entry.Repository.Equals("sonicdcer/MarioKart64Recomp", StringComparison.OrdinalIgnoreCase))
+                        {
+                            category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/mariokart64.jpg" };
+                        }
                     }
                 }
 
