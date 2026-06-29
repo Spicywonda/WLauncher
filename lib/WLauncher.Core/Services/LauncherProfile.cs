@@ -6,7 +6,7 @@ namespace WLauncher.Core.Services
 
         public virtual string DisplayName => "WLauncher";
         public virtual string ApplicationId => "WLauncher";
-        public virtual string Repository => "SirDiabo/WLauncher";
+        public virtual string Repository => "Spicywonda/WLauncher";
         public virtual string ExecutableName => "WLauncher";
         public virtual string DefaultInstallFolderName => "Apps";
         public virtual string UserAgent => "WLauncher/1.0";

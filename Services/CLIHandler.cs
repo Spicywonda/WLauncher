@@ -233,7 +233,7 @@ namespace WLauncher
                 client.Timeout = TimeSpan.FromSeconds(5);
                 client.DefaultRequestHeaders.Add("User-Agent", Profile.CliUserAgent);
 
-                var response = await client.GetStringAsync("https://api.github.com/repos/sirdiabo/WLauncher/releases/latest");
+                var response = await client.GetStringAsync("https://api.github.com/repos/Spicywonda/WLauncher/releases/latest");
                 using var doc = JsonDocument.Parse(response);
                 var latestTag = doc.RootElement.GetProperty("tag_name").GetString();
 

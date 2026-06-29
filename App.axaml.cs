@@ -130,7 +130,7 @@ public class App : Application, INotifyPropertyChanged
 
     private static bool _hasCheckedForAppUpdates = false;
     private static readonly object _updateLock = new object();
-    private const string Repository = "SirDiabo/WLauncher";
+    private const string Repository = "Spicywonda/WLauncher";
     private const string VersionFileName = "version.txt";
     private const string UpdateCheckFileName = "update_check.json";
     private const string BackupDirectoryPrefix = "backup_";

@@ -2365,7 +2365,7 @@ namespace WLauncher
         {
             try
             {
-                string url = "https://github.com/SirDiabo/WLauncher/";
+                string url = "https://github.com/Spicywonda/WLauncher/";
                 OpenUrl(url);
             }
             catch (Exception ex)

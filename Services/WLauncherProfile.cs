@@ -8,7 +8,7 @@ namespace WLauncher.Services
 
         public override string DisplayName => "WLauncher";
         public override string ApplicationId => "WLauncher";
-        public override string Repository => "SirDiabo/WLauncher";
+        public override string Repository => "Spicywonda/WLauncher";
         public override string ExecutableName => "WLauncher";
         public override string DefaultInstallFolderName => "Apps";
         public override string UserAgent => "WLauncher/1.0";
