@@ -16,11 +16,23 @@ namespace WLauncher
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
 
+        [DllImport("shell32.dll", SetLastError = true)]
+        private static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppId);
+
         private const int ATTACH_PARENT_PROCESS = -1;
 
         [STAThread]
         public static int Main(string[] args)
         {
+            if (OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    SetCurrentProcessExplicitAppUserModelID("Spicywonda.WLauncher");
+                }
+                catch { }
+            }
+
             try
             {
                 if (args.Length > 0 && args[0].StartsWith("-"))

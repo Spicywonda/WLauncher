@@ -493,9 +493,20 @@ namespace WLauncher.Models
 
         static async Task ShowMessageBoxAsync(string message, string title)
         {
+            if (Application.Current == null)
+            {
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"ERROR: {title}");
+                Console.ResetColor();
+                Console.WriteLine(message);
+                Console.WriteLine();
+                return;
+            }
+
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
-                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+                if (Application.Current.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
                     desktop.MainWindow != null)
                 {
                     var messageBox = new Window
@@ -1279,11 +1290,17 @@ namespace WLauncher.Models
 
         private static async Task<bool> ShowWineNotFoundWarning()
         {
+            if (Application.Current == null)
+            {
+                Console.WriteLine("Warning: Windows Runner Not Found");
+                return false;
+            }
+
             bool userChoice = false;
 
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
-                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+                if (Application.Current.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
                     desktop.MainWindow != null)
                 {
                     var messageBox = new Window
@@ -1679,9 +1696,15 @@ namespace WLauncher.Models
 
         private static async Task ShowRateLimitErrorAsync()
         {
+            if (Application.Current == null)
+            {
+                Console.WriteLine("Rate limit error. Please check your GitHub API limits.");
+                return;
+            }
+
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
-                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+                if (Application.Current.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
                     desktop.MainWindow != null)
                 {
                     var hyperlinkText = new TextBlock
@@ -2012,18 +2035,21 @@ namespace WLauncher.Models
                 }
 
                 // If multiple executables and no valid selection, trigger selection UI
-                if (executables.Count > 1 && (string.IsNullOrEmpty(SelectedExecutable) || !executables.Contains(SelectedExecutable)))
+                if (executables.Count > 1 && (string.IsNullOrEmpty(SelectedExecutable) || !executables.Contains(SelectedExecutable, StringComparer.OrdinalIgnoreCase)))
                 {
                     SelectedExecutable = null; // Reset if saved exe no longer exists
                     // Signal to UI that selection is needed
-                    OnPropertyChanged(nameof(HasMultipleExecutables));
-                    OnPropertyChanged(nameof(AvailableExecutables));
+                    if (Application.Current != null)
+                    {
+                        OnPropertyChanged(nameof(HasMultipleExecutables));
+                        OnPropertyChanged(nameof(AvailableExecutables));
+                    }
                     return;
                 }
 
                 // Use selected executable or default to first one
-                executablePath = !string.IsNullOrEmpty(SelectedExecutable) && executables.Contains(SelectedExecutable)
-                    ? SelectedExecutable
+                executablePath = !string.IsNullOrEmpty(SelectedExecutable) && executables.Contains(SelectedExecutable, StringComparer.OrdinalIgnoreCase)
+                    ? executables.FirstOrDefault(e => e.Equals(SelectedExecutable, StringComparison.OrdinalIgnoreCase)) ?? executables[0]
                     : executables[0];
 
                 // Make executable on Unix systems

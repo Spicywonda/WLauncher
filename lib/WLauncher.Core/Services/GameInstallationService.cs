@@ -209,7 +209,17 @@ public static class GameInstallationService
             executables.AddRange(allFiles.Where(f => f.EndsWith(".sh", StringComparison.OrdinalIgnoreCase)));
         }
 
-        return executables
+        var ignoredKeywords = new[] { "crashpad", "crashhandler", "unins", "setup", "uninstall", "redist", "dxsetup", "dependencies" };
+        var filteredExecutables = executables
+            .Where(e => {
+                var fileName = Path.GetFileName(e).ToLowerInvariant();
+                return !ignoredKeywords.Any(k => fileName.Contains(k));
+            })
+            .ToList();
+
+        var finalExecutables = filteredExecutables.Count > 0 ? filteredExecutables : executables;
+
+        return finalExecutables
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(f => GetPathDepth(path, f))
             .ThenBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase)
