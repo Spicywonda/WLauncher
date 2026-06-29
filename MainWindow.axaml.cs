@@ -4335,6 +4335,9 @@ namespace WLauncher
                 string json = await File.ReadAllTextAsync(AppCatalogCachePath).ConfigureAwait(false);
                 var categories = ParseCatalogJson(json);
 
+                // Remove System Emulation category
+                categories.RemoveAll(c => c.Category.Equals("System Emulation", StringComparison.OrdinalIgnoreCase));
+
                 // Inject Castlevania Symphony of the Night under Xbox 360 (Rexglue)
                 string targetCategory = "Xbox 360 (Rexglue)";
                 int categoryIndex = categories.FindIndex(c => c.Category.Equals(targetCategory, StringComparison.OrdinalIgnoreCase));
