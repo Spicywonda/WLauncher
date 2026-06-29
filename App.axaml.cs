@@ -741,6 +741,19 @@ public class App : Application, INotifyPropertyChanged
 
         if (asset == null)
         {
+            var archiveAssets = latestRelease.assets.Where(a =>
+                a.name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ||
+                a.name.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+
+            if (archiveAssets.Count == 1)
+            {
+                asset = archiveAssets[0];
+            }
+        }
+
+        if (asset == null)
+        {
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 await ShowMessageBoxAsync($"No downloadable update found for your platform ({platformIdentifier}).",
