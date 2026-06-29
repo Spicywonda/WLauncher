@@ -4352,6 +4352,10 @@ namespace WLauncher
                         {
                             category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/mariokart64.jpg" };
                         }
+                        else if (entry.Repository.Equals("sonicdcer/DNZHRecomp", StringComparison.OrdinalIgnoreCase))
+                        {
+                            category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/dukenukemzerohour.jpg" };
+                        }
                     }
                 }
 
