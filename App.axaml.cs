@@ -722,23 +722,12 @@ public class App : Application, INotifyPropertyChanged
             }
         }
 
-        while (validParts.Count < 2)
+        while (validParts.Count < 4)
         {
             validParts.Add("0");
         }
 
-        if (validParts.Count == 2)
-        {
-            return $"{validParts[0]}.{validParts[1]}";
-        }
-        else if (validParts.Count == 3)
-        {
-            return $"{validParts[0]}.{validParts[1]}.{validParts[2]}";
-        }
-        else
-        {
-            return $"{validParts[0]}.{validParts[1]}.{validParts[2]}.{validParts[3]}";
-        }
+        return $"{validParts[0]}.{validParts[1]}.{validParts[2]}.{validParts[3]}";
     }
 
     private async Task DownloadAndApplyUpdate(GitHubRelease latestRelease, string currentAppDirectory, UpdateCheckInfo updateCheckInfo)
