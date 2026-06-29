@@ -37,13 +37,16 @@ public static class GameInstallationService
             await ExtractRarAsync(downloadPath, gamePath).ConfigureAwait(false);
         }
 
-        try
+        if (options.CreateAssetsFolder)
         {
-            Directory.CreateDirectory(Path.Combine(gamePath, "assets"));
-        }
-        catch (Exception ex)
-        {
-            Log(options, $"Warning: Failed to create assets directory: {ex.Message}");
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(gamePath, "assets"));
+            }
+            catch (Exception ex)
+            {
+                Log(options, $"Warning: Failed to create assets directory: {ex.Message}");
+            }
         }
 
         try

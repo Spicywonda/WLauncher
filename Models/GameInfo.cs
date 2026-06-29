@@ -1613,7 +1613,8 @@ namespace WLauncher.Models
                     Status = GameStatus.Installing;
                     DownloadProgress = 95;
 
-                    await InstallOrUpdateGame(downloadPath, gamePath, asset.name, latestRelease.tag_name);
+                    bool createAssetsFolder = string.Equals(Repository, "SunJaycy/GoldenEye-Recomp", StringComparison.OrdinalIgnoreCase);
+                    await InstallOrUpdateGame(downloadPath, gamePath, asset.name, latestRelease.tag_name, createAssetsFolder);
 
                     DownloadProgress = 100;
                     await Task.Delay(500); // Brief pause to show completion
@@ -1884,21 +1885,22 @@ namespace WLauncher.Models
             return false;
         }
 
-        static async Task InstallOrUpdateGame(string downloadPath, string gamePath, string assetName, string version)
+        static async Task InstallOrUpdateGame(string downloadPath, string gamePath, string assetName, string version, bool createAssetsFolder)
         {
             await GameInstallationService.InstallOrUpdateGameAsync(
                 downloadPath,
                 gamePath,
                 assetName,
                 version,
-                GetInstallationOptions()).ConfigureAwait(false);
+                GetInstallationOptions(createAssetsFolder)).ConfigureAwait(false);
         }
 
-        static GameInstallationOptions GetInstallationOptions()
+        static GameInstallationOptions GetInstallationOptions(bool createAssetsFolder = false)
         {
             return new GameInstallationOptions
             {
-                Log = message => Debug.WriteLine(message)
+                Log = message => Debug.WriteLine(message),
+                CreateAssetsFolder = createAssetsFolder
             };
         }
 

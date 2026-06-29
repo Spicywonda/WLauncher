@@ -6,5 +6,7 @@ public sealed class GameInstallationOptions
 
     public IReadOnlyCollection<string> AdditionalMetadataFileNames { get; init; } = Array.Empty<string>();
 
+    public bool CreateAssetsFolder { get; init; } = false;
+
     public Action<string>? Log { get; init; }
 }
