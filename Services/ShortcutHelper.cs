@@ -129,7 +129,7 @@ namespace WLauncher.Services
             SetShortcutInt(shortcutEntry, "appid", appId);
             SetShortcutString(shortcutEntry, "appname", game.Name!);
             SetShortcutString(shortcutEntry, "exe", quotedLauncherPath);
-            SetShortcutString(shortcutEntry, "StartDir", startDir);
+            SetShortcutString(shortcutEntry, "StartDir", QuoteSteamPath(startDir));
             SetShortcutString(shortcutEntry, "icon", iconPath ?? string.Empty);
             SetShortcutString(shortcutEntry, "ShortcutPath", string.Empty);
             SetShortcutString(shortcutEntry, "LaunchOptions", launchOptions);
@@ -271,14 +271,20 @@ namespace WLauncher.Services
             string gameName = game.Name!.Replace("\"", "");
             string shortcutPath = Path.Combine(desktopPath, $"{SanitizeFileName(game.Name!)}.lnk");
 
+            string escapedGameName = gameName.Replace("'", "''");
+            string escapedShortcutPath = shortcutPath.Replace("'", "''");
+            string escapedLauncherPath = launcherPath.Replace("'", "''");
+            string escapedWorkDir = (Path.GetDirectoryName(launcherPath) ?? "").Replace("'", "''");
+            string escapedIconPath = iconPath?.Replace("'", "''");
+
             string psScript = $@"
                 $WshShell = New-Object -ComObject WScript.Shell
-                $Shortcut = $WshShell.CreateShortcut('{shortcutPath}')
-                $Shortcut.TargetPath = '{launcherPath}'
-                $Shortcut.Arguments = '--run {gameName}'
-                $Shortcut.WorkingDirectory = '{Path.GetDirectoryName(launcherPath)}'
-                $Shortcut.Description = 'Launch {gameName} via WLauncher'
-                {(iconPath != null ? $"$Shortcut.IconLocation = '{iconPath},0'" : "")}
+                $Shortcut = $WshShell.CreateShortcut('{escapedShortcutPath}')
+                $Shortcut.TargetPath = '{escapedLauncherPath}'
+                $Shortcut.Arguments = '--run ""{escapedGameName}""'
+                $Shortcut.WorkingDirectory = '{escapedWorkDir}'
+                $Shortcut.Description = 'Launch {escapedGameName} via WLauncher'
+                {(iconPath != null ? $"$Shortcut.IconLocation = '{escapedIconPath},0'" : "")}
                 $Shortcut.Save()
                 ";
 
@@ -287,9 +293,7 @@ namespace WLauncher.Services
                 FileName = "powershell.exe",
                 Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript.Replace("\"", "`\"")}\"",
                 UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
+                CreateNoWindow = true
             };
 
             using var process = Process.Start(psi);
@@ -439,22 +443,44 @@ namespace WLauncher.Services
 
         private static IEnumerable<string> GetSteamUserdataRoots()
         {
-            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                var paths = new List<string>();
+
+                try
+                {
+                    using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+                    var path = key?.GetValue("SteamPath") as string;
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        paths.Add(Path.Combine(path.Replace('/', '\\'), "userdata"));
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Wow6432Node\Valve\Steam");
+                    var path = key?.GetValue("InstallPath") as string;
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        paths.Add(Path.Combine(path.Replace('/', '\\'), "userdata"));
+                    }
+                }
+                catch { }
+
                 var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
                 var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
                 var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-                return new[]
-                {
-                    Path.Combine(programFilesX86, "Steam", "userdata"),
-                    Path.Combine(programFiles, "Steam", "userdata"),
-                    Path.Combine(localAppData, "Steam", "userdata")
-                }.Distinct(StringComparer.OrdinalIgnoreCase);
+                paths.Add(Path.Combine(programFilesX86, "Steam", "userdata"));
+                paths.Add(Path.Combine(programFiles, "Steam", "userdata"));
+                paths.Add(Path.Combine(localAppData, "Steam", "userdata"));
+
+                return paths.Distinct(StringComparer.OrdinalIgnoreCase);
             }
 
+            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             return new[]
             {
                 Path.Combine(userProfile, ".steam", "steam", "userdata"),

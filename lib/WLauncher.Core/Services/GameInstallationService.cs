@@ -32,6 +32,10 @@ public static class GameInstallationService
         {
             await ExtractTarGzAsync(downloadPath, gamePath).ConfigureAwait(false);
         }
+        else if (assetName.EndsWith(".rar", StringComparison.OrdinalIgnoreCase))
+        {
+            await ExtractRarAsync(downloadPath, gamePath).ConfigureAwait(false);
+        }
 
         try
         {
@@ -499,6 +503,30 @@ public static class GameInstallationService
             return;
 
         try { Directory.Delete(path, true); } catch { }
+    }
+
+    private static async Task ExtractRarAsync(string archivePath, string destinationPath)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "tar",
+            Arguments = $"-xf \"{archivePath}\" -C \"{destinationPath}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardError = true
+        };
+
+        using var process = Process.Start(startInfo);
+        if (process == null)
+            throw new InvalidOperationException("Could not start tar process.");
+
+        await process.WaitForExitAsync().ConfigureAwait(false);
+
+        if (process.ExitCode != 0)
+        {
+            string error = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+            throw new InvalidDataException($"Failed to extract RAR archive (exit code {process.ExitCode}): {error}");
+        }
     }
 
     static void Log(GameInstallationOptions options, string message)
