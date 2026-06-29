@@ -929,7 +929,7 @@ namespace WLauncher
                         var updateInfo = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
                         if (updateInfo != null && updateInfo.TryGetValue("CurrentVersion", out var versionElement))
                         {
-                            currentVersionString = versionElement.GetString() ?? "v0.0";
+                            currentVersionString = versionElement.GetString() ?? "v1.0";
                             return;
                         }
                     }
@@ -948,7 +948,7 @@ namespace WLauncher
                 }
                 else
                 {
-                    currentVersionString = "v0.0";
+                    currentVersionString = "v1.0";
                 }
             }
             catch (Exception ex)

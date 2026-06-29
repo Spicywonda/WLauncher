@@ -222,16 +222,16 @@ public class App : Application, INotifyPropertyChanged
             {
                 try
                 {
-                    currentVersionString = (await File.ReadAllTextAsync(versionFilePath).ConfigureAwait(false))?.Trim() ?? "0.0";
+                    currentVersionString = (await File.ReadAllTextAsync(versionFilePath).ConfigureAwait(false))?.Trim() ?? "1.0";
                 }
                 catch
                 {
-                    currentVersionString = "0.0";
+                    currentVersionString = "1.0";
                 }
             }
             else
             {
-                currentVersionString = "0.0";
+                currentVersionString = "1.0";
             }
 
             // Store it in update check info

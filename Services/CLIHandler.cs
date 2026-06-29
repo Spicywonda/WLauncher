@@ -932,7 +932,7 @@ namespace WLauncher
             }
 
             string versionFilePath = Path.Combine(currentAppDirectory, VersionFileName);
-            return File.Exists(versionFilePath) ? File.ReadAllText(versionFilePath).Trim() : "0.0";
+            return File.Exists(versionFilePath) ? File.ReadAllText(versionFilePath).Trim() : "1.0";
         }
 
         private static bool ValidateLauncherUpdateFiles(string updateDirectory)

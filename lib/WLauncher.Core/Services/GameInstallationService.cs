@@ -39,6 +39,15 @@ public static class GameInstallationService
 
         try
         {
+            Directory.CreateDirectory(Path.Combine(gamePath, "assets"));
+        }
+        catch (Exception ex)
+        {
+            Log(options, $"Warning: Failed to create assets directory: {ex.Message}");
+        }
+
+        try
+        {
             EnsureExecutableAtRoot(gamePath, options);
         }
         catch (Exception ex)
