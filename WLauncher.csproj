@@ -43,6 +43,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<None Update="version.txt" CopyToOutputDirectory="PreserveNewest" />
+		<None Update="apps.json" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="lib\WLauncher.Core\WLauncher.Core.csproj" />
 	</ItemGroup>
 

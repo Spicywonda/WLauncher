@@ -215,7 +215,7 @@ public class App : Application, INotifyPropertyChanged
         string currentVersionString = updateCheckInfo.CurrentVersion;
 
         // get it from version.txt if it exists
-        if (string.IsNullOrEmpty(currentVersionString))
+        if (string.IsNullOrEmpty(currentVersionString) || IsBootstrapVersion(currentVersionString))
         {
             string versionFilePath = Path.Combine(currentAppDirectory, VersionFileName);
             if (File.Exists(versionFilePath))

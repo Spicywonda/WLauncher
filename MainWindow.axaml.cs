@@ -929,8 +929,12 @@ namespace WLauncher
                         var updateInfo = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
                         if (updateInfo != null && updateInfo.TryGetValue("CurrentVersion", out var versionElement))
                         {
-                            currentVersionString = versionElement.GetString() ?? "v1.0";
-                            return;
+                            var versionStr = versionElement.GetString();
+                            if (!string.IsNullOrEmpty(versionStr) && versionStr != "0.0" && versionStr != "v0.0" && versionStr != "0.0.0" && versionStr != "0.0.0.0" && versionStr != "0")
+                            {
+                                currentVersionString = versionStr;
+                                return;
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -4331,6 +4335,30 @@ namespace WLauncher
                 string json = await File.ReadAllTextAsync(AppCatalogCachePath).ConfigureAwait(false);
                 var categories = ParseCatalogJson(json);
 
+                // Inject Castlevania Symphony of the Night under Xbox 360 (Rexglue)
+                string targetCategory = "Xbox 360 (Rexglue)";
+                int categoryIndex = categories.FindIndex(c => c.Category.Equals(targetCategory, StringComparison.OrdinalIgnoreCase));
+                var customEntry = new CatalogEntry(
+                    "Castlevania Symphony of the Night",
+                    "birabittoh/NocturneRecomp",
+                    "CastlevaniaSOTN",
+                    "/Assets/Icons/sotn.jpg",
+                    targetCategory
+                );
+
+                if (categoryIndex >= 0)
+                {
+                    var existingCategory = categories[categoryIndex];
+                    if (!existingCategory.Entries.Any(e => e.Repository.Equals("birabittoh/NocturneRecomp", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        existingCategory.Entries.Add(customEntry);
+                    }
+                }
+                else
+                {
+                    categories.Add((targetCategory, new List<CatalogEntry> { customEntry }));
+                }
+
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (versionText != null)
@@ -4491,14 +4519,32 @@ private Border BuildCatalogCard(CatalogEntry entry, bool alreadyAdded)
                 {
                     try
                     {
-                        using var client = new System.Net.Http.HttpClient();
-                        var imageData = await client.GetByteArrayAsync(entry.AppIconUrl);
-                        var bitmap = new Avalonia.Media.Imaging.Bitmap(new System.IO.MemoryStream(imageData));
-
-                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        Avalonia.Media.Imaging.Bitmap? bitmap = null;
+                        if (entry.AppIconUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                            entry.AppIconUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                         {
-                            img.Source = bitmap;
-                        });
+                            using var client = new System.Net.Http.HttpClient();
+                            var imageData = await client.GetByteArrayAsync(entry.AppIconUrl);
+                            bitmap = new Avalonia.Media.Imaging.Bitmap(new System.IO.MemoryStream(imageData));
+                        }
+                        else
+                        {
+                            string resourcePath = entry.AppIconUrl;
+                            if (resourcePath.StartsWith("/"))
+                            {
+                                resourcePath = "avares://WLauncher" + resourcePath;
+                            }
+                            using var assetStream = Avalonia.Platform.AssetLoader.Open(new Uri(resourcePath));
+                            bitmap = new Avalonia.Media.Imaging.Bitmap(assetStream);
+                        }
+
+                        if (bitmap != null)
+                        {
+                            await Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                img.Source = bitmap;
+                            });
+                        }
                     }
                     catch
                     {
