@@ -641,17 +641,17 @@ public class App : Application, INotifyPropertyChanged
 
     private bool ShouldSkipUpdateCheck(UpdateCheckInfo info, string currentVersion)
     {
+        if (!string.IsNullOrEmpty(info.CurrentVersion) &&
+            !info.CurrentVersion.TrimStart('v', 'V').Equals(currentVersion.TrimStart('v', 'V'), StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         if (info.LastCheckTime == DateTime.MinValue)
             return false;
 
         if (DateTime.UtcNow - info.LastCheckTime < UpdateCheckInterval)
             return true;
-
-        if (!string.IsNullOrEmpty(info.CurrentVersion) &&
-            !info.CurrentVersion.Equals(currentVersion.TrimStart('v'), StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
 
         if (!string.IsNullOrEmpty(info.LastKnownVersion) &&
             !string.IsNullOrEmpty(currentVersion) &&
