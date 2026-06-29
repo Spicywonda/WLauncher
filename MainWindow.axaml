@@ -5,6 +5,7 @@
         xmlns:local="clr-namespace:WLauncher"
 		xmlns:asyncImageLoader="clr-namespace:AsyncImageLoader;assembly=AsyncImageLoader.Avalonia"
         Title="WLauncher"
+		Icon="avares://WLauncher/Assets/icon.ico"
 		Width="1280" Height="720"
 		MinWidth="750" MinHeight="490"
         Background="{Binding WindowBackground}"
