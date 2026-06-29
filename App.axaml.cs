@@ -153,7 +153,8 @@ public class App : Application, INotifyPropertyChanged
         {
             desktop.MainWindow = new MainWindow
             {
-                DataContext = this
+                DataContext = this,
+                _app = this
             };
         }
 
