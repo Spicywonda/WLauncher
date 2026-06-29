@@ -278,20 +278,23 @@ namespace WLauncher.Services
             string escapedIconPath = iconPath?.Replace("'", "''");
 
             string psScript = $@"
-                $WshShell = New-Object -ComObject WScript.Shell
-                $Shortcut = $WshShell.CreateShortcut('{escapedShortcutPath}')
-                $Shortcut.TargetPath = '{escapedLauncherPath}'
-                $Shortcut.Arguments = '--run ""{escapedGameName}""'
-                $Shortcut.WorkingDirectory = '{escapedWorkDir}'
-                $Shortcut.Description = 'Launch {escapedGameName} via WLauncher'
-                {(iconPath != null ? $"$Shortcut.IconLocation = '{escapedIconPath},0'" : "")}
-                $Shortcut.Save()
-                ";
+$WshShell = New-Object -ComObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut('{escapedShortcutPath}')
+$Shortcut.TargetPath = '{escapedLauncherPath}'
+$Shortcut.Arguments = '--run ""{escapedGameName}""'
+$Shortcut.WorkingDirectory = '{escapedWorkDir}'
+$Shortcut.Description = 'Launch {escapedGameName} via WLauncher'
+{(iconPath != null ? $"$Shortcut.IconLocation = '{escapedIconPath},0'" : "")}
+$Shortcut.Save()
+";
+
+            byte[] bytes = System.Text.Encoding.Unicode.GetBytes(psScript);
+            string base64 = Convert.ToBase64String(bytes);
 
             var psi = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript.Replace("\"", "`\"")}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {base64}",
                 UseShellExecute = false,
                 CreateNoWindow = true
             };

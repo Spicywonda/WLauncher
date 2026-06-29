@@ -370,7 +370,7 @@ namespace WLauncher.Services
                     .Where(app => app != null && !IsGameHidden(settings, app))
                     .ToList();
 
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                if (Avalonia.Application.Current == null)
                 {
                     Games.Clear();
                     foreach (var app in filteredApps)
@@ -378,7 +378,19 @@ namespace WLauncher.Services
                         if (app != null)
                             Games.Add(app);
                     }
-                });
+                }
+                else
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        Games.Clear();
+                        foreach (var app in filteredApps)
+                        {
+                            if (app != null)
+                                Games.Add(app);
+                        }
+                    });
+                }
 
                 await LoadCustomAndCachedIconsAsync();
 
