@@ -213,127 +213,32 @@ public class App : Application, INotifyPropertyChanged
         string updateCheckFilePath = Path.Combine(currentAppDirectory, UpdateCheckFileName);
 
         UpdateCheckInfo updateCheckInfo = await LoadUpdateCheckInfo(updateCheckFilePath);
-        string currentVersionString = updateCheckInfo.CurrentVersion;
-
-        // get it from version.txt if it exists
-        if (string.IsNullOrEmpty(currentVersionString) || IsBootstrapVersion(currentVersionString))
+        // Load the actual version of the running app from version.txt
+        string currentVersionString = "1.0";
+        string versionFilePath = Path.Combine(currentAppDirectory, VersionFileName);
+        if (File.Exists(versionFilePath))
         {
-            string versionFilePath = Path.Combine(currentAppDirectory, VersionFileName);
-            if (File.Exists(versionFilePath))
+            try
             {
-                try
-                {
-                    currentVersionString = (await File.ReadAllTextAsync(versionFilePath).ConfigureAwait(false))?.Trim() ?? "1.0";
-                }
-                catch
-                {
-                    currentVersionString = "1.0";
-                }
+                currentVersionString = (await File.ReadAllTextAsync(versionFilePath).ConfigureAwait(false))?.Trim() ?? "1.0";
             }
-            else
+            catch
             {
                 currentVersionString = "1.0";
             }
-
-            // Store it in update check info
-            updateCheckInfo.CurrentVersion = currentVersionString;
-            await SaveUpdateCheckInfo(updateCheckFilePath, updateCheckInfo);
         }
 
-        // Skip check if not manual and recently checked
-        if (!isManualCheck && ShouldSkipUpdateCheck(updateCheckInfo, currentVersionString))
+        // If the running version is different from the last checked version, clear ETag to force full check
+        if (!string.IsNullOrEmpty(updateCheckInfo.CurrentVersion) &&
+            !updateCheckInfo.CurrentVersion.TrimStart('v', 'V').Equals(currentVersionString.TrimStart('v', 'V'), StringComparison.OrdinalIgnoreCase))
         {
-            Trace.WriteLine($"Skipping app update check - last checked {updateCheckInfo.LastCheckTime}, current version {currentVersionString}");
-
-            if (updateCheckInfo.UpdateAvailable &&
-                !string.IsNullOrEmpty(updateCheckInfo.LastKnownVersion) &&
-                IsNewerVersion(updateCheckInfo.LastKnownVersion, currentVersionString))
-            {
-                Trace.WriteLine($"Cached app update available: {updateCheckInfo.LastKnownVersion}");
-
-                if (IsBootstrapVersion(currentVersionString))
-                {
-                    using (var httpClient = new HttpClient())
-                    {
-                        httpClient.Timeout = DownloadTimeout;
-                        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("WLauncher-Updater");
-
-                        var settings = AppSettings.Load();
-                        if (!string.IsNullOrEmpty(settings?.GitHubApiToken))
-                        {
-                            httpClient.DefaultRequestHeaders.Authorization =
-                                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.GitHubApiToken);
-                        }
-
-                        try
-                        {
-                            string apiUrl = $"https://api.github.com/repos/{Repository}/releases/latest";
-                            var response = await httpClient.GetAsync(apiUrl);
-                            response.EnsureSuccessStatusCode();
-
-                            string releaseResponse = await response.Content.ReadAsStringAsync();
-                            GitHubRelease? latestRelease = JsonSerializer.Deserialize<GitHubRelease>(releaseResponse);
-
-                            if (latestRelease != null)
-                            {
-                                await DownloadAndApplyUpdate(latestRelease, AppDomain.CurrentDomain.BaseDirectory, updateCheckInfo);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            await ShowMessageBoxAsync($"Failed to download bootstrap update: {ex.Message}", "Update Error");
-                        }
-                    }
-
-                    return;
-                }
-
-                // Prompt user about available update
-                await Dispatcher.UIThread.InvokeAsync(async () =>
-                {
-                    var result = await ShowMessageBoxWithChoiceAsync(
-                        $"Launcher update {updateCheckInfo.LastKnownVersion} is available!\n\nWould you like to update now?",
-                        "Update Available");
-
-                    if (result)
-                    {
-                        using (var httpClient = new HttpClient())
-                        {
-                            httpClient.Timeout = DownloadTimeout;
-                            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("WLauncher-Updater");
-
-                            var settings = AppSettings.Load();
-                            if (!string.IsNullOrEmpty(settings?.GitHubApiToken))
-                            {
-                                httpClient.DefaultRequestHeaders.Authorization =
-                                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.GitHubApiToken);
-                            }
-
-                            try
-                            {
-                                string apiUrl = $"https://api.github.com/repos/{Repository}/releases/latest";
-                                var response = await httpClient.GetAsync(apiUrl);
-                                response.EnsureSuccessStatusCode();
-
-                                string releaseResponse = await response.Content.ReadAsStringAsync();
-                                GitHubRelease? latestRelease = JsonSerializer.Deserialize<GitHubRelease>(releaseResponse);
-
-                                if (latestRelease != null)
-                                {
-                                    await DownloadAndApplyUpdate(latestRelease, AppDomain.CurrentDomain.BaseDirectory, updateCheckInfo);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                await ShowMessageBoxAsync($"Failed to download update: {ex.Message}", "Update Error");
-                            }
-                        }
-                    }
-                });
-            }
-
-            return;
+            updateCheckInfo.ETag = string.Empty;
+            updateCheckInfo.UpdateAvailable = false;
+            updateCheckInfo.LastKnownVersion = string.Empty;
         }
+
+        updateCheckInfo.CurrentVersion = currentVersionString;
+        await SaveUpdateCheckInfo(updateCheckFilePath, updateCheckInfo);
 
         using (var httpClient = new HttpClient())
         {
@@ -640,29 +545,7 @@ public class App : Application, INotifyPropertyChanged
         }
     }
 
-    private bool ShouldSkipUpdateCheck(UpdateCheckInfo info, string currentVersion)
-    {
-        if (!string.IsNullOrEmpty(info.CurrentVersion) &&
-            !info.CurrentVersion.TrimStart('v', 'V').Equals(currentVersion.TrimStart('v', 'V'), StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
 
-        if (info.LastCheckTime == DateTime.MinValue)
-            return false;
-
-        if (DateTime.UtcNow - info.LastCheckTime < UpdateCheckInterval)
-            return true;
-
-        if (!string.IsNullOrEmpty(info.LastKnownVersion) &&
-            !string.IsNullOrEmpty(currentVersion) &&
-            !IsNewerVersion(info.LastKnownVersion, currentVersion))
-        {
-            return true;
-        }
-
-        return false;
-    }
 
     private bool IsNewerVersion(string latestVersion, string currentVersion)
     {
