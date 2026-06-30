@@ -4356,6 +4356,10 @@ namespace WLauncher
                         {
                             category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/dukenukemzerohour.jpg" };
                         }
+                        else if (entry.Repository.Equals("HarvestMoon64Recomp/HarvestMoon64Recomp", StringComparison.OrdinalIgnoreCase))
+                        {
+                            category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/harvestmoon64.jpg" };
+                        }
                     }
                 }
 
