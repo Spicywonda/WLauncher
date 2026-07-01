@@ -4363,7 +4363,7 @@ namespace WLauncher
                     }
                 }
 
-                // Inject Castlevania Symphony of the Night under Xbox 360 (Rexglue)
+                // Inject Castlevania Symphony of the Night and Silent Hill Downpour under Xbox 360 (Rexglue)
                 string targetCategory = "Xbox 360 (Rexglue)";
                 int categoryIndex = categories.FindIndex(c => c.Category.Equals(targetCategory, StringComparison.OrdinalIgnoreCase));
                 var customEntry = new CatalogEntry(
@@ -4371,6 +4371,13 @@ namespace WLauncher
                     "birabittoh/NocturneRecomp",
                     "CastlevaniaSOTN",
                     "/Assets/Icons/sotn.jpg",
+                    targetCategory
+                );
+                var customEntryDownpour = new CatalogEntry(
+                    "Silent Hill Downpour",
+                    "LittleBitUA/DownpourRecomp",
+                    "DownpourRecomp",
+                    "/Assets/Icons/downpour.png",
                     targetCategory
                 );
 
@@ -4381,10 +4388,14 @@ namespace WLauncher
                     {
                         existingCategory.Entries.Add(customEntry);
                     }
+                    if (!existingCategory.Entries.Any(e => e.Repository.Equals("LittleBitUA/DownpourRecomp", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        existingCategory.Entries.Add(customEntryDownpour);
+                    }
                 }
                 else
                 {
-                    categories.Add((targetCategory, new List<CatalogEntry> { customEntry }));
+                    categories.Add((targetCategory, new List<CatalogEntry> { customEntry, customEntryDownpour }));
                 }
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
