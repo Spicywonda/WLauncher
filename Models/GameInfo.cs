@@ -599,6 +599,19 @@ namespace WLauncher.Models
                     InstalledVersion = "";
                 }
 
+                // If Repository is an external URL, skip GitHub checking
+                bool isExternalUrl = !string.IsNullOrEmpty(Repository) && (Repository.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || Repository.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+
+                if (isExternalUrl)
+                {
+                    LatestVersion = "N/A";
+                    if (isInstalled && string.IsNullOrWhiteSpace(InstalledVersion))
+                    {
+                        InstalledVersion = "Manual";
+                    }
+                    return;
+                }
+
                 // Different update check logic for installed vs not-installed games
                 if (forceUpdateCheck)
                 {
@@ -1263,6 +1276,29 @@ namespace WLauncher.Models
             }
         }
 
+        private void OpenUrl(string url)
+        {
+            try
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    System.Diagnostics.Process.Start("xdg-open", $"\"{url}\"");
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    System.Diagnostics.Process.Start("open", $"\"{url}\"");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to open URL {url}: {ex.Message}");
+            }
+        }
+
         public async Task PerformActionAsync(HttpClient httpClient, string gamesFolder, AppSettings settings)
         {
             if (string.IsNullOrEmpty(FolderName))
@@ -1272,6 +1308,27 @@ namespace WLauncher.Models
             }
 
             string gamePath = GetInstallPath(gamesFolder);
+
+            // If Repository is an external URL, handle manual download
+            bool isExternalUrl = !string.IsNullOrEmpty(Repository) && (Repository.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || Repository.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+
+            if (isExternalUrl)
+            {
+                if (Status == GameStatus.NotInstalled || Status == GameStatus.UpdateAvailable)
+                {
+                    OpenUrl(Repository);
+                    await ShowMessageBoxAsync(
+                        $"{Name} is hosted externally.\n\n" +
+                        $"We have opened the download page in your web browser.\n\n" +
+                        $"To install this game:\n" +
+                        $"1. Download the game files from the page.\n" +
+                        $"2. Create the directory or extract the contents directly into:\n" +
+                        $"{gamePath}\n\n" +
+                        $"Once extracted, restart or refresh the launcher, and the button will change to 'Play'!",
+                        "Manual Download Required");
+                    return;
+                }
+            }
 
             switch (Status)
             {

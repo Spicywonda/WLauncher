@@ -4398,6 +4398,29 @@ namespace WLauncher
                     categories.Add((targetCategory, new List<CatalogEntry> { customEntry, customEntryDownpour }));
                 }
 
+                // Inject TimeSplitters Rewind under Extra PC Games
+                string extraPcCategory = "Extra PC Games";
+                var tsEntry = new CatalogEntry(
+                    "TimeSplitters Rewind",
+                    "https://www.indiedb.com/games/timesplitters-rewind1/downloads/timesplitters-rewind-early-access-v03",
+                    "TimeSplittersRewind",
+                    "/Assets/Icons/timesplitters_rewind.png",
+                    extraPcCategory
+                );
+                int extraPcIndex = categories.FindIndex(c => c.Category.Equals(extraPcCategory, StringComparison.OrdinalIgnoreCase));
+                if (extraPcIndex >= 0)
+                {
+                    var existingCategory = categories[extraPcIndex];
+                    if (!existingCategory.Entries.Any(e => e.Repository.Equals(tsEntry.Repository, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        existingCategory.Entries.Add(tsEntry);
+                    }
+                }
+                else
+                {
+                    categories.Add((extraPcCategory, new List<CatalogEntry> { tsEntry }));
+                }
+
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (versionText != null)
