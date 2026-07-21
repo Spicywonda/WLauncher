@@ -3,9 +3,14 @@ name: .NET Desktop Build
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-windows:
@@ -149,3 +154,52 @@ jobs:
         name: WLauncher-macOS-x64
         path: publish/${{ env.App_Name }}.app
         retention-days: 14
+
+  create-release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download Windows x64
+        uses: actions/download-artifact@v4
+        with:
+          name: WLauncher-Windows-x64
+          path: publish/win-x64
+      - name: Download Linux x64
+        uses: actions/download-artifact@v4
+        with:
+          name: WLauncher-Linux-x64
+          path: publish/linux-x64
+      - name: Download Linux ARM64
+        uses: actions/download-artifact@v4
+        with:
+          name: WLauncher-Linux-ARM64
+          path: publish/linux-arm64
+      - name: Download macOS x64
+        uses: actions/download-artifact@v4
+        with:
+          name: WLauncher-macOS-x64
+          path: publish/osx-x64/WLauncher.app
+
+      - name: Install zip
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Archive artifacts
+        run: |
+          cd publish/win-x64 && zip -r ../../WLauncher-Windows-x64.zip * && cd ../..
+          cd publish/linux-x64 && tar -czf ../../WLauncher-Linux-x64.tar.gz * && cd ../..
+          cd publish/linux-arm64 && tar -czf ../../WLauncher-Linux-ARM64.tar.gz * && cd ../..
+          cd publish/osx-x64 && zip -r ../../WLauncher-macOS-x64.zip WLauncher.app && cd ../..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            WLauncher-Windows-x64.zip
+            WLauncher-Linux-x64.tar.gz
+            WLauncher-Linux-ARM64.tar.gz
+            WLauncher-macOS-x64.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
