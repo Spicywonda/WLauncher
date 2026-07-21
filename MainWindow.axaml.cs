@@ -4421,6 +4421,29 @@ namespace WLauncher
                     categories.Add((extraPcCategory, new List<CatalogEntry> { tsEntry }));
                 }
 
+                // Inject Pokemon Red Recomp under OTHER PORTS
+                string otherPortsCategory = "OTHER PORTS";
+                var pokemonEntry = new CatalogEntry(
+                    "Pokemon Red Recomp",
+                    "bryanthaboi/pokemon-gen1-recomp-project",
+                    "PokemonRedRecomp",
+                    "/Assets/Icons/pokemon_red.jpg",
+                    otherPortsCategory
+                );
+                int otherPortsIndex = categories.FindIndex(c => c.Category.Equals(otherPortsCategory, StringComparison.OrdinalIgnoreCase));
+                if (otherPortsIndex >= 0)
+                {
+                    var existingCategory = categories[otherPortsIndex];
+                    if (!existingCategory.Entries.Any(e => e.Repository.Equals(pokemonEntry.Repository, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        existingCategory.Entries.Add(pokemonEntry);
+                    }
+                }
+                else
+                {
+                    categories.Add((otherPortsCategory, new List<CatalogEntry> { pokemonEntry }));
+                }
+
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (versionText != null)
