@@ -1,4 +1,4 @@
-# 🚀 WLauncher
+# 🚀 WLauncher 2.0
 
 ![WLauncher Banner](https://i.pinimg.com/originals/df/64/a0/df64a03a777dc9f9a060ef6b286773b3.gif)
 

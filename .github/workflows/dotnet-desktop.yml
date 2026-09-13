@@ -144,9 +144,9 @@ jobs:
             <key>CFBundleName</key>
             <string>${{ env.App_Name }}</string>
             <key>CFBundleVersion</key>
-            <string>1.0.0</string>
+            <string>2.0.0</string>
             <key>CFBundleShortVersionString</key>
-            <string>1.0.0</string>
+            <string>2.0.0</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>LSMinimumSystemVersion</key>
@@ -195,6 +195,8 @@ jobs:
 
       - name: Archive artifacts
         run: |
+          # Artifact transport resets file modes; restore native launcher permissions.
+          chmod +x publish/linux-x64/WLauncher publish/linux-arm64/WLauncher publish/osx-x64/WLauncher.app/Contents/MacOS/WLauncher
           cd publish/win-x64 && zip -r ../../WLauncher-Windows-x64.zip * && cd ../..
           cd publish/linux-x64 && tar -czf ../../WLauncher-Linux-x64.tar.gz * && cd ../..
           cd publish/linux-arm64 && tar -czf ../../WLauncher-Linux-ARM64.tar.gz * && cd ../..
