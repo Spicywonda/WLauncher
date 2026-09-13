@@ -1,0 +1,74 @@
+{
+  "N64 Ports": [
+    {
+      "name": "Duke Nukem: Zero Hour Recompiled",
+      "repository": "https://gitlab.com/sonicdcer/DNZHRecomp/-/releases",
+      "folderName": "DNZHRecomp",
+      "appIconUrl": "/Assets/Icons/dukenukemzerohour.jpg"
+    },
+    {
+      "name": "Extreme-G Recompiled",
+      "repository": "https://gitlab.com/sonicdcer/ExtremeGRecomp/-/releases",
+      "folderName": "ExtremeGRecomp",
+      "appIconUrl": ""
+    },
+    {
+      "name": "Mario Kart 64 Recompiled",
+      "repository": "https://gitlab.com/sonicdcer/MarioKart64Recomp/-/releases",
+      "folderName": "MarioKart64Recomp",
+      "appIconUrl": "/Assets/Icons/mariokart64.jpg"
+    },
+    {
+      "name": "Star Fox 64 Recompiled",
+      "repository": "https://gitlab.com/sonicdcer/Starfox64Recomp/-/releases",
+      "folderName": "Starfox64Recomp",
+      "appIconUrl": "/Assets/Icons/starfox64.png"
+    }
+  ],
+  "Xbox 360 (Rexglue)": [
+    {
+      "name": "Castlevania: Symphony of the Night (Nocturne)",
+      "repository": "birabittoh/NocturneRecomp",
+      "folderName": "CastlevaniaSOTN",
+      "appIconUrl": "/Assets/Icons/sotn.jpg"
+    },
+    {
+      "name": "Silent Hill: Downpour",
+      "repository": "LittleBitUA/DownpourRecomp",
+      "folderName": "DownpourRecomp",
+      "appIconUrl": "/Assets/Icons/downpour.png"
+    }
+  ],
+  "2D Game Ports": [
+    {
+      "name": "Sonic Mania",
+      "repository": "RSDKModding/Sonic-Mania-Decompilation",
+      "folderName": "SonicMania",
+      "appIconUrl": ""
+    }
+  ],
+  "AI - 2D Game Ports": [
+    {
+      "name": "Gen1Recomp++ (Pokémon RBY + GSC)",
+      "repository": "bryanthaboi/gen1recomp",
+      "folderName": "PokemonRedRecomp",
+      "appIconUrl": "/Assets/Icons/pokemon_red.jpg"
+    }
+  ],
+  "Other Ports": [
+    {
+      "name": "DevilutionX (Diablo + Hellfire)",
+      "repository": "diasurgical/DevilutionX",
+      "folderName": "DevilutionX",
+      "appIconUrl": ""
+    }
+  ],
+  "Extra PC Games": [
+    {
+      "name": "TimeSplitters Rewind",
+      "repository": "https://www.indiedb.com/games/timesplitters-rewind1/downloads/timesplitters-rewind-early-access-v03",
+      "folderName": "TimeSplittersRewind",
+      "appIconUrl": "/Assets/Icons/timesplitters_rewind.png"
+    }
+  ]
+}

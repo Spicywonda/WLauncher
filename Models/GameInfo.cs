@@ -212,7 +212,7 @@ namespace WLauncher.Models
             }
         }
 
-        public bool HasMultipleDownloads => AvailableDownloads?.Count > 1;
+        public bool RequiresDownloadSelection => AvailableDownloads is { Count: > 0 } && SelectedDownload == null;
 
         public bool IsInstalled
         {
@@ -1584,10 +1584,10 @@ namespace WLauncher.Models
                 GitHubAsset? asset = null;
 
                 // If multiple downloads and no selection made, trigger selection UI
-                if (availableAssets.Count > 1 && SelectedDownload == null)
+                if (SelectedDownload == null && !GitHubReleaseService.CanAutomaticallySelectAsset(availableAssets, GetPlatformIdentifier(settings)))
                 {
                     // Signal to UI that selection is needed
-                    OnPropertyChanged(nameof(HasMultipleDownloads));
+                    OnPropertyChanged(nameof(RequiresDownloadSelection));
                     OnPropertyChanged(nameof(AvailableDownloads));
                     Status = GameStatus.NotInstalled;
                     DownloadProgress = 0;

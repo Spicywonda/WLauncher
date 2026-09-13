@@ -76,10 +76,14 @@ namespace WLauncher.Core.Services
                 .ToList();
         }
 
+        public static bool CanAutomaticallySelectAsset(IReadOnlyList<GitHubAsset> assets, string platform) =>
+            assets.Count == 1 && PlatformAssetMatcher.MatchesPlatform(assets[0].name, platform);
+
         public static List<GitHubAsset> GetDownloadableAssets(GitHubRelease release)
         {
             return (release.assets ?? [])
-                .Where(asset => !asset.name.Contains("flatpak", StringComparison.OrdinalIgnoreCase))
+                .Where(asset => GameInstallationService.SupportsAsset(asset.name)
+                    && !asset.name.Contains("flatpak", StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
     }

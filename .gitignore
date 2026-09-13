@@ -22,3 +22,6 @@ publish-single/
 publish-extract/
 WLauncher.zip
 .dotnet/
+
+# macOS folder metadata
+.DS_Store
