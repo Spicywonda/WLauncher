@@ -38,6 +38,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<EmbeddedResource Include="Catalog/additions.json" LogicalName="WLauncher.Catalog.additions.json" />
 		<AvaloniaResource Include="Assets/**" />
 		<AvaloniaResource Include="Assets/Icons/**" />
 	</ItemGroup>
@@ -53,6 +54,7 @@
 
 	<ItemGroup>
 		<Compile Remove="lib\WLauncher.Core\**\*.cs" />
+		<Compile Remove="tests/**/*.cs" />
 		<EmbeddedResource Remove="lib\WLauncher.Core\**\*.*" />
 		<None Remove="lib\WLauncher.Core\**\*.*" />
 	</ItemGroup>

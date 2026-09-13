@@ -34,6 +34,9 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore WLauncher.sln
 
+    - name: Run regression tests
+      run: dotnet run --project tests/WLauncher.Tests -c Release
+
     - name: Publish Windows x64
       run: dotnet publish WLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/win-x64
 
@@ -64,6 +67,9 @@ jobs:
 
     - name: Restore dependencies
       run: dotnet restore WLauncher.sln
+
+    - name: Run regression tests
+      run: dotnet run --project tests/WLauncher.Tests -c Release
 
     - name: Publish Linux x64
       run: dotnet publish WLauncher.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/linux-x64
@@ -106,6 +112,9 @@ jobs:
 
     - name: Restore dependencies
       run: dotnet restore WLauncher.sln
+
+    - name: Run regression tests
+      run: dotnet run --project tests/WLauncher.Tests -c Release
 
     - name: Publish macOS x64
       run: dotnet publish WLauncher.csproj -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o publish/osx-x64

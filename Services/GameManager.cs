@@ -79,7 +79,6 @@ namespace WLauncher.Services
             }
 
             LoadVersionString();
-            _ = ValidateAndFixAppsJsonAsync();
         }
 
         public void Dispose()
@@ -102,19 +101,6 @@ namespace WLauncher.Services
         public async Task CheckAllUpdatesAsync()
         {
             await LoadGamesAsync(forceUpdateCheck: true);
-        }
-
-        private async Task ValidateAndFixAppsJsonAsync()
-        {
-            try
-            {
-                var apps = await LoadAppsFromJsonAsync().ConfigureAwait(false);
-                await SaveAppsToJsonAsync(apps).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error during apps.json integrity check: {ex.Message}");
-            }
         }
 
         private void LoadVersionString()
@@ -188,8 +174,7 @@ namespace WLauncher.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error reading {Path.GetFileName(path)}: {ex.Message}");
-                return [];
+                throw new IOException($"Could not read {Path.GetFileName(path)}. The file has been preserved; repair it or restore a backup before saving changes.", ex);
             }
         }
 
@@ -202,6 +187,10 @@ namespace WLauncher.Services
                 apps.AddRange(ParseAppArray(root));
                 return apps;
             }
+
+            if (root.ValueKind != JsonValueKind.Object ||
+                !new[] { "apps", "standard", "experimental", "custom" }.Any(key => root.TryGetProperty(key, out _)))
+                throw new JsonException("Expected an app array or an object containing apps.");
 
             if (root.TryGetProperty("apps", out var appsArray))
             {
@@ -242,11 +231,14 @@ namespace WLauncher.Services
                         GameManager = this,
                     };
 
+                    if (string.IsNullOrWhiteSpace(app.Name) || string.IsNullOrWhiteSpace(app.Repository) || string.IsNullOrWhiteSpace(app.FolderName))
+                        throw new JsonException("An app is missing its name, repository or folderName.");
+                    app.Repository = WLauncherCatalog.ResolveRepository(app.Repository);
                     apps.Add(app);
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error parsing app: {ex.Message}");
+                    throw new JsonException("Invalid app entry. The app list has not been modified.", ex);
                 }
             }
 
@@ -283,24 +275,14 @@ namespace WLauncher.Services
 
         private async Task SaveAppsToJsonAsync(List<GameInfo> apps)
         {
-            var data = new
-            {
-                apps = apps.Select(SerializeApp).ToList()
-            };
-
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            await File.WriteAllTextAsync(_appsConfigPath, JsonSerializer.Serialize(data, options)).ConfigureAwait(false);
-        }
-
-        private void SaveAppsToJson(List<GameInfo> apps)
-        {
-            var data = new
-            {
-                apps = apps.Select(SerializeApp).ToList()
-            };
-
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            File.WriteAllText(_appsConfigPath, JsonSerializer.Serialize(data, options));
+            // Refuse to overwrite an unreadable list, including a failed legacy migration.
+            if (File.Exists(_appsConfigPath))
+                await LoadAppsFromFileAsync(_appsConfigPath).ConfigureAwait(false);
+            var data = new { apps = apps.Select(SerializeApp).ToList() };
+            string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            using var document = JsonDocument.Parse(json);
+            ParseAppsRoot(document.RootElement);
+            await AtomicFile.WriteAllTextAsync(_appsConfigPath, json).ConfigureAwait(false);
         }
 
         private async Task LoadCustomAndCachedIconsAsync()

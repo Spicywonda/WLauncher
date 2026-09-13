@@ -7,6 +7,10 @@ namespace WLauncher.Core.Services;
 
 public static class GameInstallationService
 {
+    public static bool SupportsAsset(string assetName) =>
+        new[] { ".exe", ".appimage", ".zip", ".tar.gz", ".rar" }
+            .Any(extension => assetName.EndsWith(extension, StringComparison.OrdinalIgnoreCase));
+
     public static async Task InstallOrUpdateGameAsync(
         string downloadPath,
         string gamePath,
@@ -14,6 +18,8 @@ public static class GameInstallationService
         string version,
         GameInstallationOptions? options = null)
     {
+        if (!SupportsAsset(assetName))
+            throw new NotSupportedException($"Unsupported download format: {assetName}. Install this package manually from its project page.");
         options ??= GameInstallationOptions.Default;
         Directory.CreateDirectory(gamePath);
 

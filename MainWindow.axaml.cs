@@ -1135,7 +1135,7 @@ namespace WLauncher
 
                     // Check if multiple downloads need selection
                     if ((game.Status == GameStatus.NotInstalled || game.Status == GameStatus.UpdateAvailable) &&
-                        game.HasMultipleDownloads && game.SelectedDownload == null)
+                        game.RequiresDownloadSelection)
                     {
                         if (button != null)
                         {
@@ -1418,9 +1418,7 @@ namespace WLauncher
                     return;
                 }
 
-                var availableAssets = latestRelease.assets?
-                    .Where(asset => !asset.name.Contains("flatpak", StringComparison.OrdinalIgnoreCase))
-                    .ToList() ?? [];
+                var availableAssets = GitHubReleaseService.GetDownloadableAssets(latestRelease);
 
                 if (availableAssets.Count == 0)
                 {
@@ -1428,7 +1426,7 @@ namespace WLauncher
                     return;
                 }
 
-                if (availableAssets.Count == 1)
+                if (GitHubReleaseService.CanAutomaticallySelectAsset(availableAssets, GameInfo.GetPlatformIdentifier(_settings)))
                 {
                     await game.InstallReleaseAsync(_gameManager.HttpClient, _gameManager.GamesFolder, _settings, latestRelease, availableAssets[0]);
                     await PersistGameVersionPreferencesAsync(game, null, latestRelease.tag_name);
@@ -1546,10 +1544,9 @@ namespace WLauncher
 
         private void ShowReleaseDownloadSelectionMenu(Control anchor, GameInfo game, GitHubRelease release, string preferredVersion, string skippedUpdateVersion)
         {
-            var availableAssets = release.assets?
-                .Where(asset => !asset.name.Contains("flatpak", StringComparison.OrdinalIgnoreCase))
+            var availableAssets = GitHubReleaseService.GetDownloadableAssets(release)
                 .OrderByDescending(asset => GameInfo.MatchesPlatform(asset.name, GameInfo.GetPlatformIdentifier(_settings)))
-                .ToList() ?? [];
+                .ToList();
 
             if (availableAssets.Count == 0)
                 return;
@@ -4270,198 +4267,55 @@ namespace WLauncher
 
         // App Catalog
         private static readonly string AppCatalogCachePath = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory, "app_catalog_cache.json");
-
-        private static readonly string AppCatalogVersionPath = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory, "app_catalog_version.txt");
+            AppDomain.CurrentDomain.BaseDirectory, "app_catalog_snapshot.json");
+        private readonly System.Threading.SemaphoreSlim _catalogLoadSemaphore = new(1, 1);
 
         private async Task LoadAppCatalogAsync(bool forceRefresh)
         {
-            var statusText = this.FindControl<TextBlock>("AppCatalogStatusText");
-            var versionText = this.FindControl<TextBlock>("AppCatalogVersionText");
-            var catalogContent = this.FindControl<StackPanel>("AppCatalogContent");
-
-            if (statusText == null || catalogContent == null)
-                return;
-
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                statusText.Text = "Checking for updates...";
-                statusText.IsVisible = true;
-                catalogContent.IsVisible = false;
-            });
-
+            // Ignore repeated refresh clicks while a catalog request is in progress.
+            if (!await _catalogLoadSemaphore.WaitAsync(0)) return;
             try
             {
+                var statusText = this.FindControl<TextBlock>("AppCatalogStatusText");
+                var versionText = this.FindControl<TextBlock>("AppCatalogVersionText");
+                var catalogContent = this.FindControl<StackPanel>("AppCatalogContent");
+                if (statusText == null || catalogContent == null) return;
+
+                statusText.Text = "Checking for catalog updates...";
+                statusText.IsVisible = true;
                 string repo = _settings?.AppListRepository ?? "SirDiabo/GHLAppList";
-                string latestTag = await FetchLatestCatalogTagAsync(repo).ConfigureAwait(false);
-
-                string cachedVersion = string.Empty;
-                if (File.Exists(AppCatalogVersionPath))
-                    cachedVersion = (await File.ReadAllTextAsync(AppCatalogVersionPath).ConfigureAwait(false)).Trim();
-
-                bool needsDownload = forceRefresh
-                    || !File.Exists(AppCatalogCachePath)
-                    || string.IsNullOrEmpty(cachedVersion)
-                    || cachedVersion != latestTag;
-
-                if (needsDownload && !string.IsNullOrEmpty(latestTag))
+                string warning = string.Empty;
+                CatalogSnapshot? snapshot = null;
+                List<CatalogEntry> remoteEntries = [];
+                try
                 {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                        statusText.Text = $"Downloading catalog {latestTag}...");
-
-                    string catalogJson = await FetchCatalogJsonAsync(repo, latestTag).ConfigureAwait(false);
-                    await File.WriteAllTextAsync(AppCatalogCachePath, catalogJson).ConfigureAwait(false);
-                    await File.WriteAllTextAsync(AppCatalogVersionPath, latestTag).ConfigureAwait(false);
-                    cachedVersion = latestTag;
-
-                    if (_settings != null)
-                    {
-                        _settings.AppListCachedVersion = latestTag;
-                        OnSettingChanged();
-                    }
+                    snapshot = await CatalogCache.LoadAsync(AppCatalogCachePath, repo, forceRefresh,
+                        () => FetchLatestCatalogTagAsync(repo), tag => FetchCatalogJsonAsync(repo, tag),
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app_catalog_cache.json"));
+                    remoteEntries = CatalogService.Parse(snapshot.Json).SelectMany(group => group.Entries).ToList();
+                    if (snapshot.IsCached) warning = snapshot.Source.Length == 0
+                        ? "Offline: showing the legacy catalog cache. Its source is unverified; refresh online to update it."
+                        : "Could not refresh the catalog. Showing the last valid cached version.";
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Catalog refresh failed: {ex.Message}");
+                    warning = "Could not retrieve the remote catalog. Showing bundled WLauncher entries. Check your connection or catalog repository.";
                 }
 
-                if (!File.Exists(AppCatalogCachePath))
-                {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        statusText.Text = "Could not retrieve catalog. Check the repository setting and your connection.";
-                        statusText.IsVisible = true;
-                    });
-                    return;
-                }
-
-                string json = await File.ReadAllTextAsync(AppCatalogCachePath).ConfigureAwait(false);
-                var categories = ParseCatalogJson(json);
-
-                // Remove System Emulation category
-                categories.RemoveAll(c => c.Category.Equals("System Emulation", StringComparison.OrdinalIgnoreCase));
-
-                // Override Star Fox 64: Recompiled logo with local asset
-                foreach (var category in categories)
-                {
-                    for (int i = 0; i < category.Entries.Count; i++)
-                    {
-                        var entry = category.Entries[i];
-                        if (entry.Repository.Equals("sonicdcer/Starfox64Recomp", StringComparison.OrdinalIgnoreCase))
-                        {
-                            category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/starfox64.png" };
-                        }
-                        else if (entry.Repository.Equals("sonicdcer/MarioKart64Recomp", StringComparison.OrdinalIgnoreCase))
-                        {
-                            category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/mariokart64.jpg" };
-                        }
-                        else if (entry.Repository.Equals("sonicdcer/DNZHRecomp", StringComparison.OrdinalIgnoreCase))
-                        {
-                            category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/dukenukemzerohour.jpg" };
-                        }
-                        else if (entry.Repository.Equals("HarvestMoon64Recomp/HarvestMoon64Recomp", StringComparison.OrdinalIgnoreCase))
-                        {
-                            category.Entries[i] = entry with { AppIconUrl = "/Assets/Icons/harvestmoon64.jpg" };
-                        }
-                    }
-                }
-
-                // Inject Castlevania Symphony of the Night and Silent Hill Downpour under Xbox 360 (Rexglue)
-                string targetCategory = "Xbox 360 (Rexglue)";
-                int categoryIndex = categories.FindIndex(c => c.Category.Equals(targetCategory, StringComparison.OrdinalIgnoreCase));
-                var customEntry = new CatalogEntry(
-                    "Castlevania Symphony of the Night",
-                    "birabittoh/NocturneRecomp",
-                    "CastlevaniaSOTN",
-                    "/Assets/Icons/sotn.jpg",
-                    targetCategory
-                );
-                var customEntryDownpour = new CatalogEntry(
-                    "Silent Hill Downpour",
-                    "LittleBitUA/DownpourRecomp",
-                    "DownpourRecomp",
-                    "/Assets/Icons/downpour.png",
-                    targetCategory
-                );
-
-                if (categoryIndex >= 0)
-                {
-                    var existingCategory = categories[categoryIndex];
-                    if (!existingCategory.Entries.Any(e => e.Repository.Equals("birabittoh/NocturneRecomp", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        existingCategory.Entries.Add(customEntry);
-                    }
-                    if (!existingCategory.Entries.Any(e => e.Repository.Equals("LittleBitUA/DownpourRecomp", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        existingCategory.Entries.Add(customEntryDownpour);
-                    }
-                }
-                else
-                {
-                    categories.Add((targetCategory, new List<CatalogEntry> { customEntry, customEntryDownpour }));
-                }
-
-                // Inject TimeSplitters Rewind under Extra PC Games
-                string extraPcCategory = "Extra PC Games";
-                var tsEntry = new CatalogEntry(
-                    "TimeSplitters Rewind",
-                    "https://www.indiedb.com/games/timesplitters-rewind1/downloads/timesplitters-rewind-early-access-v03",
-                    "TimeSplittersRewind",
-                    "/Assets/Icons/timesplitters_rewind.png",
-                    extraPcCategory
-                );
-                int extraPcIndex = categories.FindIndex(c => c.Category.Equals(extraPcCategory, StringComparison.OrdinalIgnoreCase));
-                if (extraPcIndex >= 0)
-                {
-                    var existingCategory = categories[extraPcIndex];
-                    if (!existingCategory.Entries.Any(e => e.Repository.Equals(tsEntry.Repository, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        existingCategory.Entries.Add(tsEntry);
-                    }
-                }
-                else
-                {
-                    categories.Add((extraPcCategory, new List<CatalogEntry> { tsEntry }));
-                }
-
-                // Inject Pokemon Red Recomp under OTHER PORTS
-                string otherPortsCategory = "OTHER PORTS";
-                var pokemonEntry = new CatalogEntry(
-                    "Pokemon Red Recomp",
-                    "bryanthaboi/pokemon-gen1-recomp-project",
-                    "PokemonRedRecomp",
-                    "/Assets/Icons/pokemon_red.jpg",
-                    otherPortsCategory
-                );
-                int otherPortsIndex = categories.FindIndex(c => c.Category.Equals(otherPortsCategory, StringComparison.OrdinalIgnoreCase));
-                if (otherPortsIndex >= 0)
-                {
-                    var existingCategory = categories[otherPortsIndex];
-                    if (!existingCategory.Entries.Any(e => e.Repository.Equals(pokemonEntry.Repository, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        existingCategory.Entries.Add(pokemonEntry);
-                    }
-                }
-                else
-                {
-                    categories.Add((otherPortsCategory, new List<CatalogEntry> { pokemonEntry }));
-                }
-
+                var categories = WLauncherCatalog.Build(remoteEntries);
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    if (versionText != null)
-                        versionText.Text = string.IsNullOrEmpty(cachedVersion) ? string.Empty : $"Version: {cachedVersion}";
-
-                    statusText.IsVisible = false;
+                    if (versionText != null) versionText.Text = snapshot == null ? "Bundled catalog" : $"Version: {snapshot.Version}";
+                    statusText.Text = warning;
+                    statusText.IsVisible = warning.Length > 0;
                     catalogContent.IsVisible = true;
                     RenderCatalogCategories(catalogContent, categories);
                 });
             }
-            catch (Exception ex)
+            finally
             {
-                await Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    statusText.Text = $"Failed to load catalog: {ex.Message}";
-                    statusText.IsVisible = true;
-                    catalogContent.IsVisible = false;
-                });
+                _catalogLoadSemaphore.Release();
             }
         }
 
@@ -4498,49 +4352,6 @@ namespace WLauncher
             return await client.GetStringAsync(url).ConfigureAwait(false);
         }
 
-        private record CatalogEntry(string Name, string Repository, string FolderName, string AppIconUrl, string Category);
-
-        private List<(string Category, List<CatalogEntry> Entries)> ParseCatalogJson(string json)
-        {
-            var result = new List<(string, List<CatalogEntry>)>();
-            try
-            {
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-
-                if (root.ValueKind == JsonValueKind.Object)
-                {
-                    foreach (var section in root.EnumerateObject())
-                    {
-                        var entries = new List<CatalogEntry>();
-                        if (section.Value.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var item in section.Value.EnumerateArray())
-                            {
-                                string name = item.TryGetProperty("name", out var n) ? n.GetString() ?? string.Empty : string.Empty;
-                                string repo = item.TryGetProperty("repository", out var r) ? r.GetString() ?? string.Empty : string.Empty;
-                                string folder = item.TryGetProperty("folderName", out var f) ? f.GetString() ?? string.Empty : string.Empty;
-                                string icon = string.Empty;
-                                if (item.TryGetProperty("gameIconUrl", out var gi)) icon = gi.GetString() ?? string.Empty;
-                                else if (item.TryGetProperty("appIconUrl", out var ai)) icon = ai.GetString() ?? string.Empty;
-                                string category = item.TryGetProperty("category", out var c) ? c.GetString() ?? string.Empty : string.Empty;
-
-                                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(repo))
-                                    entries.Add(new CatalogEntry(name, repo, folder, icon, category));
-                            }
-                        }
-                        if (entries.Count > 0)
-                            result.Add((section.Name, entries));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"ParseCatalogJson failed: {ex.Message}");
-            }
-            return result;
-        }
-
         private void RenderCatalogCategories(StackPanel container, List<(string Category, List<CatalogEntry> Entries)> categories)
         {
             container.Children.Clear();
@@ -4558,7 +4369,7 @@ namespace WLauncher
             }
 
             var installedRepos = new HashSet<string>(
-                _gameManager?.Games.Select(g => g.Repository ?? string.Empty) ?? Enumerable.Empty<string>(),
+                _gameManager?.Games.Select(g => WLauncherCatalog.ResolveRepository(g.Repository ?? string.Empty)) ?? Enumerable.Empty<string>(),
                 StringComparer.OrdinalIgnoreCase);
 
             foreach (var (categoryName, entries) in categories)
@@ -4584,12 +4395,24 @@ namespace WLauncher
             }
         }
 
-private Border BuildCatalogCard(CatalogEntry entry, bool alreadyAdded)
+        private Border BuildCatalogCard(CatalogEntry entry, bool alreadyAdded)
         {
             var image = new Border
             {
                 Height = 200,
                 Background = this.FindResource("ThemeLighter") as IBrush,
+                Child = new TextBlock
+                {
+                    Text = entry.Name,
+                    FontSize = 22,
+                    FontWeight = FontWeight.Bold,
+                    TextWrapping = TextWrapping.Wrap,
+                    TextAlignment = TextAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = this.FindResource("ThemeTextSecondary") as IBrush,
+                    Margin = new Thickness(16),
+                },
             };
 
             if (!string.IsNullOrEmpty(entry.AppIconUrl))
@@ -4598,7 +4421,6 @@ private Border BuildCatalogCard(CatalogEntry entry, bool alreadyAdded)
                 {
                     Stretch = Stretch.UniformToFill,
                 };
-                image.Child = img;
 
                 _ = Task.Run(async () =>
                 {
@@ -4628,6 +4450,7 @@ private Border BuildCatalogCard(CatalogEntry entry, bool alreadyAdded)
                             await Dispatcher.UIThread.InvokeAsync(() =>
                             {
                                 img.Source = bitmap;
+                                image.Child = img;
                             });
                         }
                     }
@@ -4649,7 +4472,7 @@ private Border BuildCatalogCard(CatalogEntry entry, bool alreadyAdded)
 
             var repoBlock = new TextBlock
             {
-                Text = entry.Repository,
+                Text = entry.RequiresManualDownload ? "Manual download · opens browser" : entry.Repository,
                 FontSize = 11,
                 Foreground = this.FindResource("ThemeTextSecondary") as IBrush,
                 TextWrapping = TextWrapping.Wrap,
@@ -4716,7 +4539,7 @@ private Border BuildCatalogCard(CatalogEntry entry, bool alreadyAdded)
             {
                 var apps = await _gameManager.GetAppsAsync().ConfigureAwait(false);
                 bool duplicate = apps.Any(a =>
-                    string.Equals(a.Repository, entry.Repository, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(WLauncherCatalog.ResolveRepository(a.Repository ?? string.Empty), entry.Repository, StringComparison.OrdinalIgnoreCase));
 
                 if (duplicate)
                 {
